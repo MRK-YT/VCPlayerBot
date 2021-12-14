@@ -65,19 +65,19 @@ async def schedule_vc(bot, message):
         if message.reply_to_message and message.reply_to_message.video:
             await msg.edit("⚡️ **Checking Telegram Media...**")
             type='video'
-            m_video = message.reply_to_message.video       
+            m_video = message.reply_to_message.video
         elif message.reply_to_message and message.reply_to_message.document:
             await msg.edit("⚡️ **Checking Telegram Media...**")
             m_video = message.reply_to_message.document
             type='video'
-            if not "video" in m_video.mime_type:
+            if "video" not in m_video.mime_type:
                 return await msg.edit("The given file is invalid")
         elif message.reply_to_message and message.reply_to_message.audio:
             #if not Config.IS_VIDEO:
                 #return await message.reply("Play from audio file is available only if Video Mode if turned off.\nUse /settings to configure ypur player.")
             await msg.edit("⚡️ **Checking Telegram Media...**")
             type='audio'
-            m_video = message.reply_to_message.audio       
+            m_video = message.reply_to_message.audio
         else:
             if message.reply_to_message and message.reply_to_message.text:
                 query=message.reply_to_message.text
@@ -120,7 +120,7 @@ async def schedule_vc(bot, message):
             else:
                 type="query"
                 ysearch=query
-        if not message.from_user is None:
+        if message.from_user is not None:
             user=f"[{message.from_user.first_name}](tg://user?id={message.from_user.id}) - (Scheduled)"
             user_id = message.from_user.id
         else:
@@ -128,20 +128,23 @@ async def schedule_vc(bot, message):
             user_id = "anonymous_admin"
         now = datetime.now()
         nyav = now.strftime("%d-%m-%Y-%H:%M:%S")
-        if type in ["video", "audio"]:
-            if type == "audio":
-                title=m_video.title
-            else:
-                title=m_video.file_name
+        if type == "video":
+            title=m_video.file_name
             data={'1':title, '2':m_video.file_id, '3':"telegram", '4':user, '5':f"{nyav}_{m_video.file_size}"}
             sid=f"{message.chat.id}_{msg.message_id}"
             Config.SCHEDULED_STREAM[sid] = data
             await sync_to_db()
-        elif type=="youtube" or type=="query":
+        elif type == "audio":
+            title=m_video.title
+            data={'1':title, '2':m_video.file_id, '3':"telegram", '4':user, '5':f"{nyav}_{m_video.file_size}"}
+            sid=f"{message.chat.id}_{msg.message_id}"
+            Config.SCHEDULED_STREAM[sid] = data
+            await sync_to_db()
+        elif type in {"youtube", "query"}:
             if type=="youtube":
                 await msg.edit("⚡️ **Fetching Video From YouTube...**")
                 url=yturl
-            elif type=="query":
+            else:
                 try:
                     await msg.edit("⚡️ **Fetching Video From YouTube...**")
                     ytquery=ysearch
@@ -155,8 +158,6 @@ async def schedule_vc(bot, message):
                     LOGGER.error(str(e))
                     await delete_messages([message, msg])
                     return
-            else:
-                return
             ydl_opts = {
                 "quite": True,
                 "geo-bypass": True,
@@ -189,10 +190,15 @@ async def schedule_vc(bot, message):
                 reply_markup=InlineKeyboardMarkup(
                     [
                         [
-                            InlineKeyboardButton(f"Schedule", url=f"https://telegram.dog/{Config.BOT_USERNAME}?start=sch_{sid}"),
+                            InlineKeyboardButton(
+                                'Schedule',
+                                url=f"https://telegram.dog/{Config.BOT_USERNAME}?start=sch_{sid}",
+                            )
                         ]
                     ]
-                ),)
+                ),
+            )
+
             await delete_messages([message, msg])
             return
         today = datetime.now(IST)
@@ -202,12 +208,21 @@ async def schedule_vc(bot, message):
         year = today.year
         month = today.month
         m=obj.monthdayscalendar(year, month)
-        button=[]
-        button.append([InlineKeyboardButton(text=f"{str(smonth)}  {str(year)}",callback_data=f"sch_month_choose_none_none")])
+        button = [
+            [
+                InlineKeyboardButton(
+                    text=f'{smonth}  {year}',
+                    callback_data='sch_month_choose_none_none',
+                )
+            ]
+        ]
+
         days=["Mon", "Tues", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        f=[]
-        for day in days:
-            f.append(InlineKeyboardButton(text=f"{day}",callback_data=f"day_info_none"))
+        f = [
+            InlineKeyboardButton(text=f"{day}", callback_data='day_info_none')
+            for day in days
+        ]
+
         button.append(f)
         for one in m:
             f=[]
@@ -237,15 +252,13 @@ async def list_schedule(bot, message):
         return
     text="Current Schedules:\n\n"
     s=Config.SCHEDULE_LIST
-    f=1
-    for sch in s:
+    for f, sch in enumerate(s, start=1):
         details=Config.SCHEDULED_STREAM.get(sch['job_id'])
-        if not details['3']=="telegram":
+        if details['3'] != "telegram":
             text+=f"<b>{f}.</b> Title: [{details['1']}]({details['2']}) By {details['4']}\n"
         else:
             text+=f"<b>{f}.</b> Title: {details['1']} By {details['4']}\n"
         date = sch['date']
-        f+=1
         date_=((pytz.utc.localize(date, is_dst=None).astimezone(IST)).replace(tzinfo=None)).strftime("%b %d %Y, %I:%M %p")
         text+=f"Shedule ID : <code>{sch['job_id']}</code>\nSchedule Date : <code>{date_}</code>\n\n"
 
