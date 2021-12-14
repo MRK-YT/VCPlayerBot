@@ -58,24 +58,39 @@ admin_filter=filters.create(is_admin)
 async def start(client, message):
     if len(message.command) > 1:
         if message.command[1] == 'help':
-            reply_markup=InlineKeyboardMarkup(
+            reply_markup = InlineKeyboardMarkup(
                 [
                     [
-                        InlineKeyboardButton(f"Play", callback_data='help_play'),
-                        InlineKeyboardButton(f"Settings", callback_data=f"help_settings"),
-                        InlineKeyboardButton(f"Recording", callback_data='help_record'),
+                        InlineKeyboardButton(
+                            'Play', callback_data='help_play'
+                        ),
+                        InlineKeyboardButton(
+                            'Settings', callback_data='help_settings'
+                        ),
+                        InlineKeyboardButton(
+                            'Recording', callback_data='help_record'
+                        ),
                     ],
                     [
-                        InlineKeyboardButton("Scheduling", callback_data="help_schedule"),
-                        InlineKeyboardButton("Controling", callback_data='help_control'),
-                        InlineKeyboardButton("Admins", callback_data="help_admin"),
+                        InlineKeyboardButton(
+                            "Scheduling", callback_data="help_schedule"
+                        ),
+                        InlineKeyboardButton(
+                            "Controling", callback_data='help_control'
+                        ),
+                        InlineKeyboardButton(
+                            "Admins", callback_data="help_admin"
+                        ),
                     ],
                     [
-                        InlineKeyboardButton(f"Misc", callback_data='help_misc'),
+                        InlineKeyboardButton(
+                            'Misc', callback_data='help_misc'
+                        ),
                         InlineKeyboardButton("Close", callback_data="close"),
                     ],
                 ]
-                )
+            )
+
             await message.reply("Learn to use the VCPlayer, Showing help menu, Choose from the below options.",
                 reply_markup=reply_markup,
                 disable_web_page_preview=True
@@ -99,12 +114,23 @@ async def start(client, message):
             year = today.year
             month = today.month
             m=obj.monthdayscalendar(year, month)
-            button=[]
-            button.append([InlineKeyboardButton(text=f"{str(smonth)}  {str(year)}",callback_data=f"sch_month_choose_none_none")])
+            button = [
+                [
+                    InlineKeyboardButton(
+                        text=f'{smonth}  {year}',
+                        callback_data='sch_month_choose_none_none',
+                    )
+                ]
+            ]
+
             days=["Mon", "Tues", "Wed", "Thu", "Fri", "Sat", "Sun"]
-            f=[]
-            for day in days:
-                f.append(InlineKeyboardButton(text=f"{day}",callback_data=f"day_info_none"))
+            f = [
+                InlineKeyboardButton(
+                    text=f"{day}", callback_data='day_info_none'
+                )
+                for day in days
+            ]
+
             button.append(f)
             for one in m:
                 f=[]
@@ -143,16 +169,22 @@ async def start(client, message):
 
 @Client.on_message(filters.command(["help", f"help@{Config.BOT_USERNAME}"]))
 async def show_help(client, message):
-    reply_markup=InlineKeyboardMarkup(
+    reply_markup = InlineKeyboardMarkup(
         [
             [
                 InlineKeyboardButton("Play", callback_data='help_play'),
-                InlineKeyboardButton("Settings", callback_data=f"help_settings"),
+                InlineKeyboardButton(
+                    "Settings", callback_data='help_settings'
+                ),
                 InlineKeyboardButton("Recording", callback_data='help_record'),
             ],
             [
-                InlineKeyboardButton("Scheduling", callback_data="help_schedule"),
-                InlineKeyboardButton("Controling", callback_data='help_control'),
+                InlineKeyboardButton(
+                    "Scheduling", callback_data="help_schedule"
+                ),
+                InlineKeyboardButton(
+                    "Controling", callback_data='help_control'
+                ),
                 InlineKeyboardButton("Admins", callback_data="help_admin"),
             ],
             [
@@ -161,17 +193,23 @@ async def show_help(client, message):
                 InlineKeyboardButton("Close", callback_data="close"),
             ],
         ]
-        )
+    )
+
     if message.chat.type != "private" and message.from_user is None:
-        k=await message.reply(
+        k = await message.reply(
             text="I cant help you here, since you are an anonymous admin. Get help in PM",
             reply_markup=InlineKeyboardMarkup(
                 [
                     [
-                        InlineKeyboardButton(f"Help", url=f"https://telegram.dog/{Config.BOT_USERNAME}?start=help"),
+                        InlineKeyboardButton(
+                            'Help',
+                            url=f"https://telegram.dog/{Config.BOT_USERNAME}?start=help",
+                        )
                     ]
                 ]
-            ),)
+            ),
+        )
+
         await delete_messages([message, k])
         return
     if Config.msg.get('help') is not None:
@@ -236,7 +274,7 @@ async def set_heroku_var(client, message):
         m = await message.reply("Checking config vars..")
         if " " in message.text:
             cmd, env = message.text.split(" ", 1)
-            if  not "=" in env:
+            if "=" not in env:
                 await m.edit("You should specify the value for env.\nExample: /env CHAT=-100213658211")
                 await delete_messages([message, m])
                 return
@@ -248,7 +286,7 @@ async def set_heroku_var(client, message):
 
         if Config.DATABASE_URI and var in ["STARTUP_STREAM", "CHAT", "LOG_GROUP", "REPLY_MESSAGE", "DELAY", "RECORDING_DUMP"]:      
             await m.edit("Mongo DB Found, Setting up config vars...")
-            await asyncio.sleep(2)  
+            await asyncio.sleep(2)
             if not value:
                 await m.edit(f"No value for env specified. Trying to delete env {var}.")
                 await asyncio.sleep(2)
@@ -258,36 +296,33 @@ async def set_heroku_var(client, message):
                     return
                 await edit_config(var, False)
                 await m.edit(f"Sucessfully deleted {var}")
-                await delete_messages([message, m])           
-                return
+                await delete_messages([message, m])
+            elif var in ["CHAT", "LOG_GROUP", "RECORDING_DUMP"]:
+                try:
+                    value=int(value)
+                except:
+                    await m.edit("You should give me a chat id . It should be an interger.")
+                    await delete_messages([message, m])
+                    return
+                if var == "CHAT":
+                    await leave_call()
+                    Config.ADMIN_CACHE=False
+                    if Config.IS_RECORDING:
+                        await stop_recording()
+                    await cancel_all_schedules()
+                    Config.CHAT=int(value)
+                    await restart()
+                await edit_config(var, int(value))
+                await m.edit(f"Succesfully changed {var} to {value}")
+                await delete_messages([message, m])
             else:
-                if var in ["CHAT", "LOG_GROUP", "RECORDING_DUMP"]:
-                    try:
-                        value=int(value)
-                    except:
-                        await m.edit("You should give me a chat id . It should be an interger.")
-                        await delete_messages([message, m])
-                        return
-                    if var == "CHAT":
-                        await leave_call()
-                        Config.ADMIN_CACHE=False
-                        if Config.IS_RECORDING:
-                            await stop_recording()
-                        await cancel_all_schedules()
-                        Config.CHAT=int(value)
-                        await restart()
-                    await edit_config(var, int(value))
-                    await m.edit(f"Succesfully changed {var} to {value}")
-                    await delete_messages([message, m])
-                    return
-                else:
-                    if var == "STARTUP_STREAM":
-                        Config.STREAM_SETUP=False
-                    await edit_config(var, value)
-                    await m.edit(f"Succesfully changed {var} to {value}")
-                    await delete_messages([message, m])
-                    await restart_playout()
-                    return
+                if var == "STARTUP_STREAM":
+                    Config.STREAM_SETUP=False
+                await edit_config(var, value)
+                await m.edit(f"Succesfully changed {var} to {value}")
+                await delete_messages([message, m])
+                await restart_playout()
+            return
         else:
             if not Config.HEROKU_APP:
                 buttons = [[InlineKeyboardButton('Heroku API_KEY', url='https://dashboard.heroku.com/account/applications/authorizations/new'), InlineKeyboardButton('🗑 Close', callback_data='close'),]]
@@ -295,7 +330,7 @@ async def set_heroku_var(client, message):
                     text="No heroku app found, this command needs the following heroku vars to be set.\n\n1. <code>HEROKU_API_KEY</code>: Your heroku account api key.\n2. <code>HEROKU_APP_NAME</code>: Your heroku app name.", 
                     reply_markup=InlineKeyboardMarkup(buttons)) 
                 await delete_messages([message])
-                return     
+                return
             config = Config.HEROKU_APP.config()
             if not value:
                 await m.edit(f"No value for env specified. Trying to delete env {var}.")
@@ -323,7 +358,7 @@ async def set_heroku_var(client, message):
             if var in config:
                 await m.edit(f"Variable already found. Now edited to {value}")
             else:
-                await m.edit(f"Variable not found, Now setting as new var.")
+                await m.edit('Variable not found, Now setting as new var.')
             await asyncio.sleep(2)
             await m.edit(f"Succesfully set {var} with value {value}, Now Restarting to take effect of changes...")
             if Config.DATABASE_URI:

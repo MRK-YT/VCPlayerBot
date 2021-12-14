@@ -61,36 +61,42 @@ admin_filter=filters.create(is_admin)
 async def add_to_playlist(_, message: Message):
     with suppress(MessageIdInvalid, MessageNotModified):
         admins = await get_admins(Config.CHAT)
-        if Config.ADMIN_ONLY:
-            if not (message.from_user is None and message.sender_chat or message.from_user.id in admins):
-                k=await message.reply_sticker("CAADBQADsQIAAtILIVYld1n74e3JuQI")
-                await delete_messages([message, k])
-                return
+        if (
+            Config.ADMIN_ONLY
+            and (message.from_user is not None or not message.sender_chat)
+            and message.from_user.id not in admins
+        ):
+            k=await message.reply_sticker("CAADBQADsQIAAtILIVYld1n74e3JuQI")
+            await delete_messages([message, k])
+            return
         type=""
         yturl=""
         ysearch=""
-        if message.command[0] == "fplay":
-            if not (message.from_user is None and message.sender_chat or message.from_user.id in admins):
-                k=await message.reply("This command is only for admins.")
-                await delete_messages([message, k])
-                return
+        if (
+            message.command[0] == "fplay"
+            and (message.from_user is not None or not message.sender_chat)
+            and message.from_user.id not in admins
+        ):
+            k=await message.reply("This command is only for admins.")
+            await delete_messages([message, k])
+            return
         msg = await message.reply_text("⚡️ **Checking recived input..**")
         if message.reply_to_message and message.reply_to_message.video:
             await msg.edit("⚡️ **Checking Telegram Media...**")
             type='video'
-            m_video = message.reply_to_message.video       
+            m_video = message.reply_to_message.video
         elif message.reply_to_message and message.reply_to_message.document:
             await msg.edit("⚡️ **Checking Telegram Media...**")
             m_video = message.reply_to_message.document
             type='video'
-            if not "video" in m_video.mime_type:
+            if "video" not in m_video.mime_type:
                 return await msg.edit("The given file is invalid")
         elif message.reply_to_message and message.reply_to_message.audio:
             #if not Config.IS_VIDEO:
                 #return await message.reply("Play from audio file is available only if Video Mode if turned off.\nUse /settings to configure ypur player.")
             await msg.edit("⚡️ **Checking Telegram Media...**")
             type='audio'
-            m_video = message.reply_to_message.audio       
+            m_video = message.reply_to_message.audio
         else:
             if message.reply_to_message and message.reply_to_message.text:
                 query=message.reply_to_message.text
@@ -141,7 +147,7 @@ async def add_to_playlist(_, message: Message):
             else:
                 type="query"
                 ysearch=query
-        if not message.from_user is None:
+        if message.from_user is not None:
             user=f"[{message.from_user.first_name}](tg://user?id={message.from_user.id})"
             user_id = message.from_user.id
         else:
@@ -149,24 +155,31 @@ async def add_to_playlist(_, message: Message):
             user_id = "anonymous_admin"
         now = datetime.now()
         nyav = now.strftime("%d-%m-%Y-%H:%M:%S")
-        if type in ["video", "audio"]:
-            if type == "audio":
-                title=m_video.title
-            else:
-                title=m_video.file_name
+        if type == "video":
+            title=m_video.file_name
             data={1:title, 2:m_video.file_id, 3:"telegram", 4:user, 5:f"{nyav}_{m_video.file_size}"}
             if message.command[0] == "fplay":
                 pla = [data] + Config.playlist
                 Config.playlist = pla
             else:
                 Config.playlist.append(data)
-            await add_to_db_playlist(data)        
+            await add_to_db_playlist(data)
             await msg.edit("Media added to playlist")
-        elif type=="youtube" or type=="query":
+        elif type == "audio":
+            title=m_video.title
+            data={1:title, 2:m_video.file_id, 3:"telegram", 4:user, 5:f"{nyav}_{m_video.file_size}"}
+            if message.command[0] == "fplay":
+                pla = [data] + Config.playlist
+                Config.playlist = pla
+            else:
+                Config.playlist.append(data)
+            await add_to_db_playlist(data)
+            await msg.edit("Media added to playlist")
+        elif type in {"youtube", "query"}:
             if type=="youtube":
                 await msg.edit("⚡️ **Fetching Video From YouTube...**")
                 url=yturl
-            elif type=="query":
+            else:
                 try:
                     await msg.edit("⚡️ **Fetching Video From YouTube...**")
                     ytquery=ysearch
@@ -180,8 +193,6 @@ async def add_to_playlist(_, message: Message):
                     LOGGER.error(str(e))
                     await delete_messages([message, msg])
                     return
-            else:
-                return
             ydl_opts = {
                 "geo-bypass": True,
                 "nocheckcertificate": True
@@ -229,7 +240,7 @@ async def add_to_playlist(_, message: Message):
             await download(Config.playlist[0], msg)  
             await play()
         else:
-            await send_playlist()  
+            await send_playlist()
         await msg.delete()
         pl=await get_playlist_str()
         if message.chat.type == "private":
@@ -238,7 +249,7 @@ async def add_to_playlist(_, message: Message):
             if Config.msg.get('playlist') is not None:
                 await Config.msg['playlist'].delete()
             Config.msg['playlist']=await message.reply(pl, disable_web_page_preview=True, reply_markup=await get_buttons())    
-            await delete_messages([message])  
+            await delete_messages([message])
         for track in Config.playlist[:2]:
             await download(track)
 
@@ -263,12 +274,12 @@ async def shuffle_play_list(client, m: Message):
         return
     else:
         if len(Config.playlist) > 2:
-            k=await m.reply_text(f"Playlist Shuffled.")
+            k = await m.reply_text('Playlist Shuffled.')
             await shuffle_playlist()
-            await delete_messages([m, k])            
         else:
-            k=await m.reply_text(f"You cant shuffle playlist with less than 3 songs.")
-            await delete_messages([m, k])
+            k = await m.reply_text('You cant shuffle playlist with less than 3 songs.')
+
+        await delete_messages([m, k])
 
 
 @Client.on_message(filters.command(["clearplaylist", f"clearplaylist@{Config.BOT_USERNAME}"]) & admin_filter & chat_filter)
@@ -278,7 +289,7 @@ async def clear_play_list(client, m: Message):
         await delete_messages([m, k])
         return
     Config.playlist.clear()
-    k=await m.reply_text(f"Playlist Cleared.")
+    k = await m.reply_text('Playlist Cleared.')
     await clear_db_playlist(all=True)
     if Config.IS_LOOP \
         and not Config.YPLAY:

@@ -81,34 +81,38 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 await query.message.edit_reply_markup(reply_markup=await get_buttons())
                 await query.answer()
                 return
-            if you == "video":
-                text="Toggle your bot to Video / Audio Player."
-            elif you == "shuffle":
-                text="Enable or disable auto playlist shuffling"
-            elif you == "admin":
+            if you == "admin":
                 text="Enable to restrict the play command only for admins."
             elif you == "mode":
                 text="Enabling Non- stop playback will make the player running 24 / 7 and automatic startup when restarting. "
-            elif you == "title":
-                text="Enable to edit the VideoChat title to Current playing song's title."
-            elif you == "reply":
-                text="Choose whether to auto-reply messaged for userbot. "
-            elif you == "videorecord":
-                text = "Enable to record both video and audio, if disabled only audio will be recorded."
-            elif you == "videodimension":
-                text = "Choose the recording video's dimensions"
-            elif you == "rectitle":
-                text = "A custom title for your chat recordings, Use /rtitle command to set a title"
             elif you == "recdumb":
                 text = "A channel to which all the recordings are forwarded. Make sure The User account is admin over there. Set one using /env or /config."
+            elif you == "rectitle":
+                text = "A custom title for your chat recordings, Use /rtitle command to set a title"
+            elif you == "reply":
+                text="Choose whether to auto-reply messaged for userbot. "
+            elif you == "shuffle":
+                text="Enable or disable auto playlist shuffling"
+            elif you == "title":
+                text="Enable to edit the VideoChat title to Current playing song's title."
+            elif you == "video":
+                text="Toggle your bot to Video / Audio Player."
+            elif you == "videodimension":
+                text = "Choose the recording video's dimensions"
+            elif you == "videorecord":
+                text = "Enable to record both video and audio, if disabled only audio will be recorded."
             await query.answer(text=text, show_alert=True)
 
 
         if query.data.startswith("help"):
-            if query.message.chat.type != "private" and query.message.reply_to_message.from_user is None:
-                return await query.answer("I cant help you here, since you are an anonymous admin, message me in private chat.", show_alert=True)
-            elif query.message.chat.type != "private" and query.from_user.id != query.message.reply_to_message.from_user.id:
-                return await query.answer("Okda")
+            if query.message.chat.type != "private":
+                if query.message.reply_to_message.from_user is None:
+                    return await query.answer("I cant help you here, since you are an anonymous admin, message me in private chat.", show_alert=True)
+                elif (
+                    query.from_user.id
+                    != query.message.reply_to_message.from_user.id
+                ):
+                    return await query.answer("Okda")
             me, nyav = query.data.split("_")
             back=InlineKeyboardMarkup(
                 [
@@ -155,7 +159,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 await query.message.edit(Config.RECORDER_HELP, reply_markup=back, disable_web_page_preview=True)
             elif nyav == 'env':
                 await query.message.edit(Config.ENV_HELP, reply_markup=back, disable_web_page_preview=True)
-            
+
         if not (query.from_user is None or query.from_user.id in admins):
             await query.answer(
                 "😒 Played Joji.mp3",
@@ -188,9 +192,25 @@ async def cb_handler(client: Client, query: CallbackQuery):
                         year_ = year
                         if k < int(today.month):
                             year_ += 1
-                            button_.append([InlineKeyboardButton(text=f"{str(month)}  {str(year_)}",callback_data=f"sch_showdate_{year_}_{k}")])
+                            button_.append(
+                                [
+                                    InlineKeyboardButton(
+                                        text=f'{month}  {year_}',
+                                        callback_data=f"sch_showdate_{year_}_{k}",
+                                    )
+                                ]
+                            )
+
                         else:
-                            button.append([InlineKeyboardButton(text=f"{str(month)}  {str(year_)}",callback_data=f"sch_showdate_{year_}_{k}")])
+                            button.append(
+                                [
+                                    InlineKeyboardButton(
+                                        text=f'{month}  {year_}',
+                                        callback_data=f"sch_showdate_{year_}_{k}",
+                                    )
+                                ]
+                            )
+
                     button = button + button_
                     button.append([InlineKeyboardButton("Close", callback_data="schclose")])
                     await query.message.edit("Now Choose the month to schedule a voicechatㅤ ㅤㅤ", reply_markup=InlineKeyboardMarkup(button))
@@ -290,7 +310,15 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 month = int(month)
                 m=obj.monthdayscalendar(year, month)
                 button=[]
-                button.append([InlineKeyboardButton(text=f"{str(thissmonth)}  {str(year)}",callback_data=f"sch_month_choose_none_none")])
+                button.append(
+                    [
+                        InlineKeyboardButton(
+                            text=f'{thissmonth}  {year}',
+                            callback_data=f"sch_month_choose_none_none",
+                        )
+                    ]
+                )
+
                 days=["Mon", "Tues", "Wed", "Thu", "Fri", "Sat", "Sun"]
                 f=[]
                 for day in days:
@@ -323,7 +351,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 await schedule_a_play(job_id, utc_dt)
                 await query.message.edit(f"Succesfully scheduled to stream on <code> {date.strftime('%b %d %Y, %I:%M %p')} </code>")
                 await delete_messages([query.message, query.message.reply_to_message])
-                
+
             elif query.data == 'schcancelall':
                 await cancel_all_schedules()
                 await query.message.edit("All Scheduled Streams are cancelled succesfully.")
@@ -349,7 +377,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             await query.answer("Playlist shuffled.")
             await sleep(1)        
             await query.message.edit_reply_markup(reply_markup=await get_buttons())
-    
+
 
         elif query.data.lower() == "pause":
             if Config.PAUSE:
@@ -360,8 +388,8 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 await sleep(1)
 
             await query.message.edit_reply_markup(reply_markup=await get_buttons())
- 
-        
+
+
         elif query.data.lower() == "resume":   
             if not Config.PAUSE:
                 await query.answer("Nothing Paused to resume")
@@ -370,7 +398,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 await query.answer("Redumed the stream")
                 await sleep(1)
             await query.message.edit_reply_markup(reply_markup=await get_buttons())
-          
+
         elif query.data=="skip": 
             if not Config.playlist:
                 await query.answer("No songs in playlist")
@@ -453,7 +481,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 return await query.answer(reply, show_alert=True)
             await query.message.edit_reply_markup(reply_markup=await get_buttons())
 
-    
+
         elif query.data == 'restart':
             if not Config.CALL_STATUS:
                 if not Config.playlist:
@@ -490,7 +518,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             if query.data == "is_loop":
                 Config.IS_LOOP = set_config(Config.IS_LOOP)
                 await query.message.edit_reply_markup(reply_markup=await settings_panel())
-  
+
             elif query.data == "is_video":
                 Config.IS_VIDEO = set_config(Config.IS_VIDEO)
                 await query.message.edit_reply_markup(reply_markup=await settings_panel())
@@ -499,19 +527,19 @@ async def cb_handler(client: Client, query: CallbackQuery):
             elif query.data == "admin_only":
                 Config.ADMIN_ONLY = set_config(Config.ADMIN_ONLY)
                 await query.message.edit_reply_markup(reply_markup=await settings_panel())
-        
+
             elif query.data == "edit_title":
                 Config.EDIT_TITLE = set_config(Config.EDIT_TITLE)
                 await query.message.edit_reply_markup(reply_markup=await settings_panel())
-        
+
             elif query.data == "set_shuffle":
                 Config.SHUFFLE = set_config(Config.SHUFFLE)
                 await query.message.edit_reply_markup(reply_markup=await settings_panel())
-        
+
             elif query.data == "reply_msg":
                 Config.REPLY_PM = set_config(Config.REPLY_PM)
                 await query.message.edit_reply_markup(reply_markup=await settings_panel())
-        
+
             elif query.data == "record_dim":
                 if not Config.IS_VIDEO_RECORD:
                     return await query.answer("This cant be used for audio recordings")
@@ -560,16 +588,14 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 if query.from_user.id in Config.SUDO:
                     await query.message.delete()
                 else:
-                    await query.answer("This can only be used by SUDO users")  
+                    await query.answer("This can only be used by SUDO users")
             else:
                 if query.message.chat.type != "private" and query.message.reply_to_message:
                     if query.message.reply_to_message.from_user is None:
                         pass
                     elif query.from_user.id != query.message.reply_to_message.from_user.id:
                         return await query.answer("Okda")
-                elif query.from_user.id in Config.ADMINS:
-                    pass
-                else:
+                elif query.from_user.id not in Config.ADMINS:
                     return await query.answer("Okda")
                 await query.answer("Menu Closed")
                 await query.message.delete()
